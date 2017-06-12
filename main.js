@@ -3,7 +3,17 @@ import {Provider, connect} from 'react-redux';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-const features = (state = {type: "FeatureCollection", features: []}, action) => {
+var initialFeatures = {
+  type : 'FeatureCollection',
+  features : [
+    { "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [0, 1]},
+      "properties": {"prop0": "value0"}
+    }
+  ]
+};
+
+const features = (state = initialFeatures, action) => {
   switch (action.type) {
     default:
       return state;
@@ -16,11 +26,14 @@ const geojsonApp = combineReducers({
 
 class FeatureTable extends React.Component {
   constructor(props) {
-    console.log(props);
     super(props);
   }
   render() {
-    return (<div/>);
+    const {features} = this.props;
+    const featureItems = features.features.map(function(feature, idx) {
+      return (<li key={idx}>{feature.properties.prop0}</li>);
+    });
+    return (<ul>{featureItems}</ul>);
   }
 }
 
