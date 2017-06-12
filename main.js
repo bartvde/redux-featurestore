@@ -37,10 +37,15 @@ class FeatureTable extends React.Component {
   }
   render() {
     const {features} = this.props;
-    const featureItems = features.map(function(feature, idx) {
-      return (<li key={idx}>{feature.properties.cat}</li>);
+    var rows = [];
+    features.map(function(feature, idx) {
+      var cells = [];
+      for (var key in feature.properties) {
+        cells.push(<td key={key}>{feature.properties[key]}</td>);
+      }
+      rows.push(<tr key={idx}>{cells}</tr>);
     });
-    return (<ul>{featureItems}</ul>);
+    return (<table><tbody>{rows}</tbody></table>);
   }
 }
 
