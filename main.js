@@ -31,22 +31,16 @@ const geojsonApp = combineReducers({
   features
 });
 
-class FeatureTable extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-  render() {
-    const {features} = this.props;
-    var rows = [];
-    features.map(function(feature, idx) {
-      var cells = [];
-      for (var key in feature.properties) {
-        cells.push(<td key={key}>{feature.properties[key]}</td>);
-      }
-      rows.push(<tr key={idx}>{cells}</tr>);
-    });
-    return (<table><tbody>{rows}</tbody></table>);
-  }
+const FeatureTable = ( {features} ) => {
+  var rows = [];
+  features.map(function(feature, idx) {
+    var cells = [];
+    for (var key in feature.properties) {
+      cells.push(<td key={key}>{feature.properties[key]}</td>);
+    }
+    rows.push(<tr key={idx}>{cells}</tr>);
+  });
+  return (<table><tbody>{rows}</tbody></table>);
 }
 
 const mapStateToProps = (state) => {
