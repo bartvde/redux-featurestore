@@ -227,7 +227,7 @@ class VectorContainer extends React.Component {
       if(this.knownFeatures[feature_id] !== state_counter) {
         src.removeFeature(feature);
         delete this.knownFeatures[feature_id];
-      // if the feature is "selected" in the dom then render 
+      // if the feature is "selected" in the state then render 
       //  it as such in the select tool.
       } else if(selected_features[feature_id] === true) {
         this._select.getFeatures().push(feature);
