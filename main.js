@@ -56,7 +56,6 @@ const features = (state = [], action) => {
     case 'REMOVE_FEATURE':
       features = [];
       for(const feature of state) {
-        console.log(action.id, feature.properties['__id']);
         if(action.id !== feature.properties['__id']) {
           features.push(feature);
         }
