@@ -19,13 +19,13 @@ import proj from 'ol/proj';
 const features = (state = [], action) => {
   switch (action.type) {
     case 'TOGGLE_SELECT_FEATURE':
-      return state.map(feature => {
-        if (feature !== action.feature) {
-          return feature;
+      return state.map(featureObj => {
+        if (featureObj.feature !== action.feature.feature) {
+          return featureObj;
         }
         return {
-           ...feature,
-           selected: !feature.selected
+           ...featureObj,
+           meta: {...featureObj.meta, selected: !featureObj.meta.selected}
         };
       });
     case 'ADD_FEATURES':
@@ -40,9 +40,16 @@ const featureLoader = (url, store) => {
     .then(function(response) {
     return response.json()
   }).then(function(json) {
+    var features = [];
+    for (var i = 0, ii = json.features.length; i < ii; ++i) {
+      features.push({
+        feature: json.features[i],
+        meta: {}
+      });
+    }
     store.dispatch({
       type: 'ADD_FEATURES',
-      features: json.features
+      features: features
     });
   }).catch(function(ex) {
     console.log('parsing failed', ex)
@@ -55,12 +62,13 @@ const geojsonApp = combineReducers({
 
 let FeatureTable = ( {features, onSelect} ) => {
   var rows = [];
-  features.map(function(feature, idx) {
-    var cells = [(<td key={idx}><input onChange={onSelect.bind(this, feature)} type='checkbox'/></td>)];
+  features.map(function(featureObj, idx) {
+    var feature = featureObj.feature;
+    var cells = [(<td key={idx}><input onChange={onSelect.bind(this, featureObj)} type='checkbox'/></td>)];
     for (var key in feature.properties) {
       cells.push(<td key={key}>{feature.properties[key]}</td>);
     }
-    rows.push(<tr style={{backgroundColor: feature.selected ? 'yellow' : undefined}} key={idx}>{cells}</tr>);
+    rows.push(<tr style={{backgroundColor: featureObj.meta.selected ? 'yellow' : undefined}} key={idx}>{cells}</tr>);
   });
   return (<div style={{position: 'absolute', left: 0, top: 0, width: '50%', height: '50%'}}><table><tbody>{rows}</tbody></table></div>);
 }
@@ -115,21 +123,22 @@ class VectorContainer extends React.Component {
       var add = true;
       for (var j = 0, jj = this.props.features.length; j < jj; ++j) {
         // feature already loaded?
-        if (nextProps.features[i] === this.props.features[j]) {
+        if (nextProps.features[i].feature === this.props.features[j].feature) {
           add = false;
           break;
         }
       }
       var feature;
       if (add) {
-        feature = format.readFeature(nextProps.features[i]);
-        if (nextProps.features[i].selected === undefined) {
-          features.push(feature);
-        } else if (nextProps.features[i].selected) {
-          this._select.getFeatures().push(feature);
+        feature = format.readFeature(nextProps.features[i].feature);
+        features.push(feature);
+      } else {
+        if (nextProps.features[i].meta.selected) {
+          // TODO ideally we would not have to recreate the feature here
+          this._select.getFeatures().push(format.readFeature(nextProps.features[i].feature));
         } else {
-          // this won't work since instances differ
-          this._select.getFeatures().remove(feature);
+          // TODO how can we match the ol.Feature instace?
+          this._select.getFeatures().remove(nextProps.features[i].feature);
         }
       }
     }
