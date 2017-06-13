@@ -12,6 +12,7 @@ import GeoJSONFormat from 'ol/format/geojson';
 import Style from 'ol/style/style';
 import CircleStyle from 'ol/style/circle';
 import FillStyle from 'ol/style/fill';
+import SelectInteraction from 'ol/interaction/select';
 
 const features = (state = [], action) => {
   switch (action.type) {
@@ -86,7 +87,8 @@ class VectorContainer extends React.Component {
   componentDidMount() {
     this._layer = new VectorLayer({
       source: new VectorSource()
-    })
+    });
+    this._select = new SelectInteraction();
     const map = new Map({
       target: ReactDOM.findDOMNode(this.refs.map),
       layers: [
@@ -102,21 +104,32 @@ class VectorContainer extends React.Component {
         zoom: 2
       })
     });
+    map.addInteraction(this._select);
   }
   componentWillReceiveProps(nextProps) {
     let features = [];
     const format = new GeoJSONFormat();
     for (var i = 0, ii = nextProps.features.length; i < ii; ++i) {
-      var feature = format.readFeature(nextProps.features[i]);
-      if (nextProps.features[i].selected) {
-        feature.setStyle(new Style({
-          image: new CircleStyle({
-            radius: 5,
-            fill: new FillStyle({color: 'red'})
-          })
-        }));
+      var add = true;
+      for (var j = 0, jj = this.props.features.length; j < jj; ++j) {
+        // feature already loaded?
+        if (nextProps.features[i] === this.props.features[j]) {
+          add = false;
+          break;
+        }
       }
-      features.push(feature);
+      var feature;
+      if (add) {
+        feature = format.readFeature(nextProps.features[i]);
+        if (nextProps.features[i].selected === undefined) {
+          features.push(feature);
+        } else if (nextProps.features[i].selected) {
+          this._select.getFeatures().push(feature);
+        } else {
+          // this won't work since instances differ
+          this._select.getFeatures().remove(feature);
+        }
+      }
     }
     this._layer.getSource().addFeatures(features);
   }
