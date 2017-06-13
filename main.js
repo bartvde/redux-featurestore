@@ -15,21 +15,53 @@ import FillStyle from 'ol/style/fill';
 import SelectInteraction from 'ol/interaction/select';
 import proj from 'ol/proj';
 
+import uuid from 'uuid';
+
 // reducer
 const features = (state = [], action) => {
+  let features = [];
   switch (action.type) {
+    case 'CLEAR_SELECTION':
+      return state.map(feature => {
+        return Object.assign(feature, {
+          properties: Object.assign(feature.properties, {
+            __selected: false
+          })
+        });
+      });
     case 'TOGGLE_SELECT_FEATURE':
       return state.map(featureObj => {
-        if (featureObj.feature !== action.feature.feature) {
+        if (action.id === featureObj.properties['__id']) {
+          return Object.assign(featureObj, {
+            properties: Object.assign(featureObj.properties, {
+              __selected: !featureObj.properties.__selected,
+            })
+          });
+        } else {
           return featureObj;
         }
-        return {
-           ...featureObj,
-           meta: {...featureObj.meta, selected: !featureObj.meta.selected}
-        };
       });
     case 'ADD_FEATURES':
-      return state.concat(action.features);
+      features = [].concat(state);
+      for(const feature of action.features) {
+        const properties = Object.assign(feature.properties, {
+          __selected: false,
+          __id: uuid(),
+        });
+        features.push(Object.assign(feature, {
+          properties: Object.assign(feature.properties, properties)
+        }));
+      }
+      return features;
+    case 'REMOVE_FEATURE':
+      features = [];
+      for(const feature of state) {
+        console.log(action.id, feature.properties['__id']);
+        if(action.id !== feature.properties['__id']) {
+          features.push(feature);
+        }
+      }
+      return features;
     default:
       return state;
   } 
@@ -49,16 +81,9 @@ const featureLoader = (url, store) => {
     .then(function(response) {
     return response.json()
   }).then(function(json) {
-    var features = [];
-    for (var i = 0, ii = json.features.length; i < ii; ++i) {
-      features.push({
-        feature: json.features[i],
-        meta: {}
-      });
-    }
     store.dispatch({
       type: 'ADD_FEATURES',
-      features: features
+      features: json.features
     });
   }).catch(function(ex) {
     console.log('parsing failed', ex)
@@ -70,31 +95,21 @@ const geojsonApp = combineReducers({
   filter
 });
 
-let FeatureTable = ( {features, filter, onSelect, onFilter} ) => {
+let FeatureTable = ( {features, onSelect, removeFeature} ) => {
   var rows = [];
-  var header = [(<th key='0'>Selected</th>)];
-  for (var i = 0, ii = features.length; i < ii; ++i) {
-    var featureObj = features[i];
-    var idx = i;
-    var feature = featureObj.feature;
-    var cells = [(<td key={idx}><input onChange={onSelect.bind(this, featureObj)} type='checkbox'/></td>)];
+  features.map((feature, idx) => {
+    var cells = [(<td key={idx}><input onChange={onSelect.bind(this, feature)} checked={feature.properties.__selected} type='checkbox'/></td>)];
+    cells.push((
+      <td key={'delete'+idx}><button onClick={removeFeature.bind(this, feature)} >-</button></td>
+    ));
     for (var key in feature.properties) {
-      if (i === 0) {
-        header.push(<th key={key}>{key}</th>);
+      if(key.substring(0,2) != '__') {
+        cells.push(<td key={key}>{feature.properties[key]}</td>);
       }
-      cells.push(<td key={key}>{feature.properties[key]}</td>);
     }
-    var row = (<tr style={{backgroundColor: featureObj.meta.selected ? 'yellow' : undefined}} key={idx}>{cells}</tr>);
-    if (filter) {
-      if (featureObj.meta.selected) {
-        rows.push(row);
-      }
-    } else {
-      rows.push(row);
-    }
-  }
-  var input = (<span><input type='checkbox' onChange={onFilter}/>Show selected only</span>);
-  return (<div style={{position: 'absolute', left: 0, top: 0, width: '50%', height: '50%'}}>{input}<table><thead><tr>{header}</tr></thead><tbody>{rows}</tbody></table></div>);
+    rows.push(<tr style={{backgroundColor: feature.properties.__selected ? 'yellow' : undefined}} key={idx}>{cells}</tr>);
+  });
+  return (<div style={{position: 'absolute', left: 0, top: 0, width: '50%', height: '50%'}}><table><tbody>{rows}</tbody></table></div>);
 }
 
 const mapStateToProps = (state) => {
@@ -102,10 +117,17 @@ const mapStateToProps = (state) => {
 }
 
 // action creator
-function toggleSelect(feature) {
+function toggleSelect(id) {
   return {
     type: 'TOGGLE_SELECT_FEATURE',
-    feature: feature
+    id
+  };
+}
+
+function removeFeature(id) {
+  return {
+    type: 'REMOVE_FEATURE',
+    id
   };
 }
 
@@ -117,16 +139,24 @@ function filterSelected() {
 
 const mapDispatchToProps = (dispatch) => ({
   onSelect(feature) {
-    dispatch(toggleSelect(feature));
+    const feature_id = feature.properties['__id'];
+    dispatch(toggleSelect(feature_id));
   },
-  onFilter() {
-    dispatch(filterSelected());
+  removeFeature(feature) {
+    const feature_id = feature.properties['__id'];
+    dispatch(removeFeature(feature_id));
   }
 });
 
 FeatureTable = connect(mapStateToProps, mapDispatchToProps)(FeatureTable);
 
 class VectorContainer extends React.Component {
+  constructor(props) {
+    super(props);
+
+    this.knownFeatures = {};
+  }
+      
   componentDidMount() {
     this._layer = new VectorLayer({
       source: new VectorSource()
@@ -148,41 +178,84 @@ class VectorContainer extends React.Component {
       })
     });
     map.addInteraction(this._select);
+
+    this._select.on('select', (evt) => {
+      this.props.clearSelection();
+      const feature_ids = [];
+      for(const feature of evt.selected) {
+        //feature_ids.push(feature.getProperties()['__id']);
+        this.props.selectFeature(feature);
+      }
+    });
   }
   componentWillReceiveProps(nextProps) {
-    let features = [];
+    // bucket for features to be added to the layer
+    let new_features = [];
     const format = new GeoJSONFormat();
+    // get a unique state identifier
+    const state_counter = uuid();
+
+    const selected_features = {};
+
     for (var i = 0, ii = nextProps.features.length; i < ii; ++i) {
-      var add = true;
-      for (var j = 0, jj = this.props.features.length; j < jj; ++j) {
-        // feature already loaded?
-        if (nextProps.features[i].feature === this.props.features[j].feature) {
-          add = false;
-          break;
-        }
+      const feature = nextProps.features[i];
+      const feature_id = feature.properties.__id;
+
+      // this feature doesn't exist on the map, create it.
+      if(!this.knownFeatures[feature_id]) {
+        new_features.push(format.readFeature(feature));
       }
-      var feature;
-      if (add) {
-        feature = format.readFeature(nextProps.features[i].feature);
-        features.push(feature);
-      } else {
-        if (nextProps.features[i].meta.selected) {
-          // TODO ideally we would not have to recreate the feature here
-          this._select.getFeatures().push(format.readFeature(nextProps.features[i].feature));
-        } else {
-          // TODO how can we match the ol.Feature instace?
-          this._select.getFeatures().remove(nextProps.features[i].feature);
-        }
+
+      if(feature.properties.__selected) {
+        selected_features[feature_id] = true;
+      }
+
+      // know that this feature is on the current state.
+      this.knownFeatures[feature_id] = state_counter;
+    }
+
+    // remove features no longer on state.
+    const src = this._layer.getSource();
+
+    // clear the selected layers.
+    this._select.getFeatures().clear();
+
+    for(const feature of src.getFeatures()) {
+      const feature_id = feature.getProperties()['__id']
+      // if the feature is not on the current "state" then
+      //  remove the feature.
+      if(this.knownFeatures[feature_id] !== state_counter) {
+        src.removeFeature(feature);
+        delete this.knownFeatures[feature_id];
+      // if the feature is "selected" in the dom then render 
+      //  it as such in the select tool.
+      } else if(selected_features[feature_id] === true) {
+        this._select.getFeatures().push(feature);
       }
     }
-    this._layer.getSource().addFeatures(features);
+
+    // add the new features
+    if(new_features.length > 0) {
+      this._layer.getSource().addFeatures(new_features);
+    }
   }
   render() {
     return (<div style={{position: 'absolute', right: 0, top: 0, width: '50%', height: '100%'}} ref='map'></div>);
   }
 }
 
-VectorContainer = connect(mapStateToProps)(VectorContainer);
+const mapDispatchToVectorProps = (dispatch) => ({
+  selectFeature(feature) {
+      dispatch({
+        type: 'TOGGLE_SELECT_FEATURE',
+        id: feature.getProperties()['__id']
+      });
+  },
+  clearSelection() {
+      dispatch({type: 'CLEAR_SELECTION'});
+  }
+});
+VectorContainer = connect(mapStateToProps, mapDispatchToVectorProps)(VectorContainer);
 
 const store = createStore(geojsonApp);
 featureLoader('./airports.json', store);
