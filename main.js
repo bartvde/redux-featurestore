@@ -35,6 +35,15 @@ const features = (state = [], action) => {
   } 
 };
 
+const filter = (state = false, action) => {
+  switch(action.type) {
+    case 'TOGGLE_FILTER_SELECTED':
+      return !state;
+    default:
+      return state;
+  }
+};
+
 const featureLoader = (url, store) => {
   fetch(url)
     .then(function(response) {
@@ -57,24 +66,35 @@ const featureLoader = (url, store) => {
 };
 
 const geojsonApp = combineReducers({
-  features
+  features,
+  filter
 });
 
-let FeatureTable = ( {features, onSelect} ) => {
+let FeatureTable = ( {features, filter, onSelect, onFilter} ) => {
   var rows = [];
-  features.map(function(featureObj, idx) {
+  for (var i = 0, ii = features.length; i < ii; ++i) {
+    var featureObj = features[i];
+    var idx = i;
     var feature = featureObj.feature;
     var cells = [(<td key={idx}><input onChange={onSelect.bind(this, featureObj)} type='checkbox'/></td>)];
     for (var key in feature.properties) {
       cells.push(<td key={key}>{feature.properties[key]}</td>);
     }
-    rows.push(<tr style={{backgroundColor: featureObj.meta.selected ? 'yellow' : undefined}} key={idx}>{cells}</tr>);
-  });
-  return (<div style={{position: 'absolute', left: 0, top: 0, width: '50%', height: '50%'}}><table><tbody>{rows}</tbody></table></div>);
+    var row = (<tr style={{backgroundColor: featureObj.meta.selected ? 'yellow' : undefined}} key={idx}>{cells}</tr>);
+    if (filter) {
+      if (featureObj.meta.selected) {
+        rows.push(row);
+      }
+    } else {
+      rows.push(row);
+    }
+  }
+  var input = (<span><input type='checkbox' onChange={onFilter}/>Show selected only</span>);
+  return (<div style={{position: 'absolute', left: 0, top: 0, width: '50%', height: '50%'}}>{input}<table><tbody>{rows}</tbody></table></div>);
 }
 
 const mapStateToProps = (state) => {
-  return {features: state.features};
+  return {features: state.features, filter: state.filter};
 }
 
 // action creator
@@ -85,9 +105,18 @@ function toggleSelect(feature) {
   };
 }
 
+function filterSelected() {
+  return {
+    type: 'TOGGLE_FILTER_SELECTED'
+  };
+}
+
 const mapDispatchToProps = (dispatch) => ({
   onSelect(feature) {
     dispatch(toggleSelect(feature));
+  },
+  onFilter() {
+    dispatch(filterSelected());
   }
 });
 
