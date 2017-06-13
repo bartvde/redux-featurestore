@@ -13,7 +13,9 @@ import Style from 'ol/style/style';
 import CircleStyle from 'ol/style/circle';
 import FillStyle from 'ol/style/fill';
 import SelectInteraction from 'ol/interaction/select';
+import proj from 'ol/proj';
 
+// reducer
 const features = (state = [], action) => {
   switch (action.type) {
     case 'TOGGLE_SELECT_FEATURE':
@@ -100,8 +102,8 @@ class VectorContainer extends React.Component {
         this._layer
       ],
       view: new View({
-        center: [0, 0],
-        zoom: 2
+        center: proj.fromLonLat([-150, 60]),
+        zoom: 3
       })
     });
     map.addInteraction(this._select);
