@@ -12,9 +12,18 @@ import GeoJSONFormat from 'ol/format/geojson';
 
 const features = (state = [], action) => {
   switch (action.type) {
+    case 'TOGGLE_SELECT_FEATURE':
+      return state.map(feature => {
+        if (feature !== action.feature) {
+          return feature;
+        }
+        return {
+           ...feature,
+           selected: !feature.selected
+        };
+      });
     case 'ADD_FEATURES':
       return state.concat(action.features);
-    break;
     default:
       return state;
   } 
@@ -38,14 +47,14 @@ const geojsonApp = combineReducers({
   features
 });
 
-const FeatureTable = ( {features} ) => {
+let FeatureTable = ( {features, onSelect} ) => {
   var rows = [];
   features.map(function(feature, idx) {
-    var cells = [];
+    var cells = [(<td key={idx}><input onChange={onSelect.bind(this, feature)} type='checkbox'/></td>)];
     for (var key in feature.properties) {
       cells.push(<td key={key}>{feature.properties[key]}</td>);
     }
-    rows.push(<tr key={idx}>{cells}</tr>);
+    rows.push(<tr style={{backgroundColor: feature.selected ? 'yellow' : undefined}} key={idx}>{cells}</tr>);
   });
   return (<div style={{position: 'absolute', left: 0, top: 0, width: '50%', height: '50%'}}><table><tbody>{rows}</tbody></table></div>);
 }
@@ -54,7 +63,21 @@ const mapStateToProps = (state) => {
   return {features: state.features};
 }
 
-const FeaturesApp = connect(mapStateToProps)(FeatureTable);
+// action creator
+function toggleSelect(feature) {
+  return {
+    type: 'TOGGLE_SELECT_FEATURE',
+    feature: feature
+  };
+}
+
+const mapDispatchToProps = (dispatch) => ({
+  onSelect(feature) {
+    dispatch(toggleSelect(feature));
+  }
+});
+
+FeatureTable = connect(mapStateToProps, mapDispatchToProps)(FeatureTable);
 
 class VectorContainer extends React.Component {
   componentDidMount() {
@@ -98,7 +121,7 @@ featureLoader('./airports.json', store);
 ReactDOM.render(
   <Provider store={store}>
     <div>
-      <FeaturesApp/>
+      <FeatureTable/>
       <VectorContainer/>
     </div>
   </Provider>
