@@ -9,6 +9,9 @@ import XYZ from 'ol/source/xyz';
 import VectorLayer from 'ol/layer/vector';
 import VectorSource from 'ol/source/vector';
 import GeoJSONFormat from 'ol/format/geojson';
+import Style from 'ol/style/style';
+import CircleStyle from 'ol/style/circle';
+import FillStyle from 'ol/style/fill';
 
 const features = (state = [], action) => {
   switch (action.type) {
@@ -104,7 +107,16 @@ class VectorContainer extends React.Component {
     let features = [];
     const format = new GeoJSONFormat();
     for (var i = 0, ii = nextProps.features.length; i < ii; ++i) {
-      features.push(format.readFeature(nextProps.features[i]));
+      var feature = format.readFeature(nextProps.features[i]);
+      if (nextProps.features[i].selected) {
+        feature.setStyle(new Style({
+          image: new CircleStyle({
+            radius: 5,
+            fill: new FillStyle({color: 'red'})
+          })
+        }));
+      }
+      features.push(feature);
     }
     this._layer.getSource().addFeatures(features);
   }
