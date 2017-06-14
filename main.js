@@ -94,7 +94,7 @@ const geojsonApp = combineReducers({
   filter
 });
 
-let FeatureTable = ( {features, onSelect, removeFeature} ) => {
+let FeatureTable = ( {features, onSelect, filter, removeFeature, onFilter} ) => {
   var header = [(<th key='0'>Selected</th>),(<th key='1'>Remove</th>)];
   var rows = [];
   features.map((feature, idx) => {
@@ -110,9 +110,17 @@ let FeatureTable = ( {features, onSelect, removeFeature} ) => {
         cells.push(<td key={key}>{feature.properties[key]}</td>);
       }
     }
-    rows.push(<tr style={{backgroundColor: feature.properties.__selected ? 'yellow' : undefined}} key={idx}>{cells}</tr>);
+    var row = (<tr style={{backgroundColor: feature.properties.__selected ? 'yellow' : undefined}} key={idx}>{cells}</tr>);
+    if (filter) {
+      if (feature.properties.__selected) {
+        rows.push(row);
+      }
+    } else {
+      rows.push(row);
+    }
   });
-  return (<div style={{position: 'absolute', left: 0, top: 0, width: '50%', height: '50%'}}><table><thead><tr>{header}</tr></thead><tbody>{rows}</tbody></table></div>);
+  var input = (<span><input type='checkbox' onChange={onFilter}/>Show selected only</span>);
+  return (<div style={{position: 'absolute', left: 0, top: 0, width: '50%', height: '50%'}}>{input}<table><thead><tr>{header}</tr></thead><tbody>{rows}</tbody></table></div>);
 }
 
 const mapStateToProps = (state) => {
@@ -148,6 +156,9 @@ const mapDispatchToProps = (dispatch) => ({
   removeFeature(feature) {
     const feature_id = feature.properties['__id'];
     dispatch(removeFeature(feature_id));
+  },
+  onFilter() {
+    dispatch(filterSelected());
   }
 });
 
@@ -260,7 +271,7 @@ const mapDispatchToVectorProps = (dispatch) => ({
 });
 VectorContainer = connect(mapStateToProps, mapDispatchToVectorProps)(VectorContainer);
 
-const store = createStore(geojsonApp);
+const store = createStore(geojsonApp, window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__());
 featureLoader('./airports.json', store);
 
 ReactDOM.render(
