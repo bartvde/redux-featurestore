@@ -95,6 +95,7 @@ const geojsonApp = combineReducers({
 });
 
 let FeatureTable = ( {features, onSelect, removeFeature} ) => {
+  var header = [(<th key='0'>Selected</th>),(<th key='1'>Remove</th>)];
   var rows = [];
   features.map((feature, idx) => {
     var cells = [(<td key={idx}><input onChange={onSelect.bind(this, feature)} checked={feature.properties.__selected} type='checkbox'/></td>)];
@@ -103,12 +104,15 @@ let FeatureTable = ( {features, onSelect, removeFeature} ) => {
     ));
     for (var key in feature.properties) {
       if(key.substring(0,2) != '__') {
+        if (idx === 0) {
+          header.push(<th key={key}>{key}</th>);
+        }
         cells.push(<td key={key}>{feature.properties[key]}</td>);
       }
     }
     rows.push(<tr style={{backgroundColor: feature.properties.__selected ? 'yellow' : undefined}} key={idx}>{cells}</tr>);
   });
-  return (<div style={{position: 'absolute', left: 0, top: 0, width: '50%', height: '50%'}}><table><tbody>{rows}</tbody></table></div>);
+  return (<div style={{position: 'absolute', left: 0, top: 0, width: '50%', height: '50%'}}><table><thead><tr>{header}</tr></thead><tbody>{rows}</tbody></table></div>);
 }
 
 const mapStateToProps = (state) => {
