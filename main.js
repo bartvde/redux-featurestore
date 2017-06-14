@@ -30,15 +30,15 @@ const features = (state = [], action) => {
         });
       });
     case 'TOGGLE_SELECT_FEATURE':
-      return state.map(featureObj => {
-        if (action.id === featureObj.properties['__id']) {
-          return Object.assign(featureObj, {
-            properties: Object.assign(featureObj.properties, {
-              __selected: !featureObj.properties.__selected,
+      return state.map(feature => {
+        if (action.id === feature.properties['__id']) {
+          return Object.assign(feature, {
+            properties: Object.assign(feature.properties, {
+              __selected: !feature.properties.__selected,
             })
           });
         } else {
-          return featureObj;
+          return feature;
         }
       });
     case 'ADD_FEATURES':
@@ -127,7 +127,7 @@ const mapStateToProps = (state) => {
   return {features: state.features, filter: state.filter};
 }
 
-// action creator
+// action creators
 function toggleSelect(id) {
   return {
     type: 'TOGGLE_SELECT_FEATURE',
@@ -145,6 +145,12 @@ function removeFeature(id) {
 function filterSelected() {
   return {
     type: 'TOGGLE_FILTER_SELECTED'
+  };
+}
+
+function clearSelection() {
+  return {
+    type: 'CLEAR_SELECTION'
   };
 }
 
@@ -260,13 +266,10 @@ class VectorContainer extends React.Component {
 
 const mapDispatchToVectorProps = (dispatch) => ({
   selectFeature(feature) {
-      dispatch({
-        type: 'TOGGLE_SELECT_FEATURE',
-        id: feature.getProperties()['__id']
-      });
+      dispatch(toggleSelect(feature.get('__id')));
   },
   clearSelection() {
-      dispatch({type: 'CLEAR_SELECTION'});
+      dispatch(clearSelection());
   }
 });
 VectorContainer = connect(mapStateToProps, mapDispatchToVectorProps)(VectorContainer);
