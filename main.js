@@ -203,7 +203,7 @@ class VectorContainer extends React.Component {
       this.props.clearSelection();
       const feature_ids = [];
       for(const feature of evt.selected) {
-        //feature_ids.push(feature.getProperties()['__id']);
+        //feature_ids.push(feature.get('__id'));
         this.props.selectFeature(feature);
       }
     });
@@ -241,7 +241,7 @@ class VectorContainer extends React.Component {
     this._select.getFeatures().clear();
 
     for(const feature of src.getFeatures()) {
-      const feature_id = feature.getProperties()['__id']
+      const feature_id = feature.get('__id');
       // if the feature is not on the current "state" then
       //  remove the feature.
       if(this.knownFeatures[feature_id] !== state_counter) {
