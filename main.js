@@ -80,10 +80,7 @@ const featureLoader = (url, store) => {
     .then(function(response) {
     return response.json()
   }).then(function(json) {
-    store.dispatch({
-      type: 'ADD_FEATURES',
-      features: json.features
-    });
+    store.dispatch(addFeatures(json.features));
   }).catch(function(ex) {
     console.log('parsing failed', ex)
   });
@@ -151,6 +148,13 @@ function filterSelected() {
 function clearSelection() {
   return {
     type: 'CLEAR_SELECTION'
+  };
+}
+
+function addFeatures(features) {
+  return {
+    type: 'ADD_FEATURES',
+    features: features
   };
 }
 
