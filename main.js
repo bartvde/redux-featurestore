@@ -225,9 +225,7 @@ class VectorContainer extends React.Component {
 
     this._select.on('select', (evt) => {
       this.props.clearSelection();
-      const feature_ids = [];
       for(const feature of evt.selected) {
-        //feature_ids.push(feature.get('__id'));
         this.props.selectFeature(feature);
       }
     });
@@ -261,7 +259,7 @@ class VectorContainer extends React.Component {
     // remove features no longer on state.
     const src = this._layer.getSource();
 
-    // clear the selected layers.
+    // clear the selected features.
     this._select.getFeatures().clear();
 
     for(const feature of src.getFeatures()) {
@@ -271,13 +269,9 @@ class VectorContainer extends React.Component {
       if(this.knownFeatures[feature_id] !== state_counter) {
         src.removeFeature(feature);
         delete this.knownFeatures[feature_id];
-      // if the feature is "selected" in the state then render 
-      //  it as such in the select tool.
-      } else if(selected_features[feature_id] === true) {
-        feature.set('__selected', true);
-        //this._select.getFeatures().push(feature);
+      // update the __selected prop on the ol.Feature
       } else {
-        feature.set('__selected', false);
+        feature.set('__selected', selected_features[feature_id] === true);
       }
     }
 
@@ -285,6 +279,7 @@ class VectorContainer extends React.Component {
     if(new_features.length > 0) {
       this._layer.getSource().addFeatures(new_features);
     }
+    // if the filter changed, we need to re-render the layer
     if (nextProps.filter !== this.props.filter) {
       this._layer.changed();
     }
