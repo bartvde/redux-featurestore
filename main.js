@@ -182,8 +182,28 @@ class VectorContainer extends React.Component {
   }
       
   componentDidMount() {
+    const style = new Style({
+      image: new CircleStyle({
+        radius: 5,
+        fill: new FillStyle({color: 'blue'})
+      })
+    });
+    const selectedStyle = new Style({
+      image: new CircleStyle({
+        radius: 5,
+        fill: new FillStyle({color: 'yellow'})
+      })
+    });
+    var me = this;
     this._layer = new VectorLayer({
-      source: new VectorSource()
+      source: new VectorSource(),
+      style: function(feature) {
+        if (feature.get('__selected')) {
+          return selectedStyle;
+        } else {
+          return me.props.filter ? null : style;
+        }
+      }
     });
     this._select = new SelectInteraction();
     const map = new Map({
@@ -254,13 +274,19 @@ class VectorContainer extends React.Component {
       // if the feature is "selected" in the state then render 
       //  it as such in the select tool.
       } else if(selected_features[feature_id] === true) {
-        this._select.getFeatures().push(feature);
+        feature.set('__selected', true);
+        //this._select.getFeatures().push(feature);
+      } else {
+        feature.set('__selected', false);
       }
     }
 
     // add the new features
     if(new_features.length > 0) {
       this._layer.getSource().addFeatures(new_features);
+    }
+    if (nextProps.filter !== this.props.filter) {
+      this._layer.changed();
     }
   }
   render() {
